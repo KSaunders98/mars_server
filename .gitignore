@@ -1,2 +1,4 @@
 /target
 .env
+/datasets/*
+!/datasets/README.md

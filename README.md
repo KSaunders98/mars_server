@@ -8,5 +8,7 @@
 - Ensure GDAL development libraries are installed on your machine (See [here](https://mothergeo-py.readthedocs.io/en/latest/development/how-to/gdal-ubuntu-pkg.html) for details on how to install them on Ubuntu).
 - Create an environment variable called `GDAL_LIB_DIR` that points to the directory where libgdal.so is located.
     - NOTE: This environment variable only needs to be present for the first `cargo build` or `cargo run`, then it is no longer necessary (unless you run `cargo clean`).
-- Run `cargo run --release -p init` to compile the program and run it.
-    - NOTE: On Ubuntu you can combine this step with the last one like so: `GDAL_LIB_DIR=/usr/lib/ cargo run --release -p init`.
+- Run `cargo build --release` to download and compile the rest of the dependencies and build the programs.
+    - NOTE: On Ubuntu you can combine this step with the last one like so: `GDAL_LIB_DIR=/usr/lib/ cargo build --release`.
+- Run `cargo run --release -p init` to run the program that builds the database. Depending on your storage medium, this may take a while.
+- Run `cargo run --release` to run the server program on 127.0.0.1:3000. At this point, the visualization prorgam can be run. Press ctrl+c to stop the server.

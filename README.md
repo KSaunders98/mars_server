@@ -1,0 +1,12 @@
+# Building
+- Download the required datasets from [here](https://astrogeology.usgs.gov/search/map/Mars/Viking/MDIM21/Mars_Viking_MDIM21_ClrMosaic_global_232m) and [here](https://astrogeology.usgs.gov/search/map/Mars/Topography/HRSC_MOLA_Blend/Mars_HRSC_MOLA_BlendDEM_Global_200mp) into the datasets directory in this project. Do not rename them.
+- Create a file ".env" in the project root with the contents `DATABASE_URL=<your database url here>`.
+- Ensure mysql client development package is installed on your machine (`sudo apt-get install libmysqlclient-dev` on Ubuntu)
+- Run `cargo install diesel_cli --no-default-features --features "mysql"`
+    - NOTE: If the mysqlclient shared library isn't in your system path (likely if you're using Windows), you will need to create an environment variable called `MYSQLCLIENT_LIB_DIR` that points to the directory where it is installed for this command to succeed.
+- Run `diesel setup` to create the database and schema.
+- Ensure GDAL development libraries are installed on your machine (See [here](https://mothergeo-py.readthedocs.io/en/latest/development/how-to/gdal-ubuntu-pkg.html) for details on how to install them on Ubuntu).
+- Create an environment variable called `GDAL_LIB_DIR` that points to the directory where libgdal.so is located.
+    - NOTE: This environment variable only needs to be present for the first `cargo build` or `cargo run`, then it is no longer necessary (unless you run `cargo clean`).
+- Run `cargo run --release -p init` to compile the program and run it.
+    - NOTE: On Ubuntu you can combine this step with the last one like so: `GDAL_LIB_DIR=/usr/lib/ cargo run --release -p init`.

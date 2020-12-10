@@ -9,3 +9,15 @@ pub struct Tile {
     pub elevation_data: Vec<u8>,
     pub imagery_data: Vec<u8>,
 }
+
+#[derive(Queryable)]
+pub struct TileOnlyElevation {
+    pub id: u32,
+    pub elevation_data: Vec<u8>,
+}
+
+#[derive(Queryable)]
+pub struct TileOnlyImagery {
+    pub id: u32,
+    pub imagery_data: Vec<u8>,
+}

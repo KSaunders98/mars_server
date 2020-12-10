@@ -2,13 +2,14 @@ use std::collections::HashMap;
 use std::env;
 use std::net::SocketAddr;
 
+use diesel::debug_query;
 use diesel::prelude::*;
 use diesel::mysql::MysqlConnection;
 use dotenv::dotenv;
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
 use hyper::service::{make_service_fn, service_fn};
 
-use common::models::Tile;
+use common::models::*;
 
 pub fn establish_connection() -> Result<MysqlConnection, ConnectionError> {
     dotenv().ok();
@@ -29,7 +30,7 @@ fn err_internal() -> Result<Response<Body>, hyper::Error> {
     Ok(err)
 }
 
-async fn handle_req(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
+fn handle_req(req: Request<Body>, debug_queries: bool) -> Result<Response<Body>, hyper::Error> {
     let params: HashMap<String, String> = req.uri().query().map(|v| {
         url::form_urlencoded::parse(v.as_bytes())
             .into_owned()
@@ -38,13 +39,13 @@ async fn handle_req(req: Request<Body>) -> Result<Response<Body>, hyper::Error> 
     .unwrap_or_else(HashMap::new);
 
     match (req.method(), req.uri().path()) {
-        (&Method::GET, "/elevation") => elev_req(&params),
-        (&Method::GET, "/imagery") => imagery_req(&params),
+        (&Method::GET, "/elevation") => elev_req(&params, debug_queries),
+        (&Method::GET, "/imagery") => imagery_req(&params, debug_queries),
         _ => err_not_found(),
     }
 }
 
-fn elev_req(params: &HashMap<String, String>) -> Result<Response<Body>, hyper::Error> {
+fn elev_req(params: &HashMap<String, String>, debug_queries: bool) -> Result<Response<Body>, hyper::Error> {
     use common::schema::tiles;
 
     match params.get("id") {
@@ -56,8 +57,14 @@ fn elev_req(params: &HashMap<String, String>) -> Result<Response<Body>, hyper::E
                         Err(_) => return err_internal(),
                     };
 
-                    let result = tiles::table.filter(tiles::id.eq(id))
-                        .load::<Tile>(&connection);
+                    // SELECT id, elevation_data FROM tiles WHERE id = ?;
+                    let query = tiles::table.select((tiles::id, tiles::elevation_data)).filter(tiles::id.eq(id));
+
+                    if debug_queries {
+                        println!("Query for tile id {}: {}", id, debug_query(&query).to_string());
+                    }
+
+                    let result = query.load::<TileOnlyElevation>(&connection);
                     
                     match result {
                         Ok(tiles) => {
@@ -77,7 +84,7 @@ fn elev_req(params: &HashMap<String, String>) -> Result<Response<Body>, hyper::E
     }
 }
 
-fn imagery_req(params: &HashMap<String, String>) -> Result<Response<Body>, hyper::Error> {
+fn imagery_req(params: &HashMap<String, String>, debug_queries: bool) -> Result<Response<Body>, hyper::Error> {
     use common::schema::tiles;
 
     match params.get("id") {
@@ -89,8 +96,14 @@ fn imagery_req(params: &HashMap<String, String>) -> Result<Response<Body>, hyper
                         Err(_) => return err_internal(),
                     };
 
-                    let result = tiles::table.filter(tiles::id.eq(id))
-                        .load::<Tile>(&connection);
+                    // SELECT id, imagery_data FROM tiles WHERE id = ?;
+                    let query = tiles::table.select((tiles::id, tiles::imagery_data)).filter(tiles::id.eq(id));
+
+                    if debug_queries {
+                        println!("Query for tile id {}: {}", id, debug_query(&query).to_string());
+                    }
+
+                    let result = query.load::<TileOnlyImagery>(&connection);
                     
                     match result {
                         Ok(tiles) => {
@@ -118,10 +131,15 @@ async fn shutdown_signal() {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let args: Vec<String> = env::args().collect();
+    let debug_queries = args.len() > 1 && args[1] == "debug_queries";
+
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
 
-    let make_svc = make_service_fn(|_conn| async {
-        Ok::<_, hyper::Error>(service_fn(handle_req))
+    let make_svc = make_service_fn(|_conn| async move {
+        Ok::<_, hyper::Error>(service_fn(move |req: Request<Body>| async move {
+            handle_req(req, debug_queries)
+        }))
     });
 
     let server = Server::bind(&addr).serve(make_svc)

@@ -103,6 +103,8 @@ fn create_tiles(thread_num: usize, num_threads: usize, progress: Arc<Mutex<usize
             batch.push(tile);
 
             if batch.len() >= BATCH_SIZE {
+                // Values are automatically grabbed from the Tile struct
+                // INSERT INTO tiles VALUES (?, ?, ?, ?, ?);
                 diesel::insert_into(tiles::table)
                     .values(&batch)
                     .execute(&connection)
@@ -113,6 +115,8 @@ fn create_tiles(thread_num: usize, num_threads: usize, progress: Arc<Mutex<usize
         }
 
         if !batch.is_empty() {
+            // Values are automatically grabbed from the Tile struct
+            // INSERT INTO tiles VALUES (?, ?, ?, ?, ?);
             diesel::insert_into(tiles::table)
                 .values(&batch)
                 .execute(&connection)
